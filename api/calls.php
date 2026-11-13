@@ -33,9 +33,9 @@ if (!is_file($configPath)) {
 $config = require $configPath;
 if (!is_array($config)
     || empty($config['n8n_api_key'])
-    || empty($config['staff_password_hash'])
+    || empty($config['staff_password'])
     || strpos($config['n8n_api_key'], 'REPLACE_') === 0
-    || strpos($config['staff_password_hash'], 'REPLACE_') === 0
+    || strpos($config['staff_password'], 'REPLACE_') === 0
     || !preg_match('/^[a-f0-9]{64}$/i', $config['n8n_api_key'])) {
     respondJson(503, ['error' => 'Call reports server credentials are incomplete.']);
 }
@@ -59,7 +59,7 @@ if (preg_match('/^Basic\s+(.+)$/i', $authorization, $matches)) {
     }
 }
 
-if ($staffPassword === '' || !password_verify($staffPassword, $config['staff_password_hash'])) {
+if ($staffPassword === '' || !hash_equals((string) $config['staff_password'], $staffPassword)) {
     header('WWW-Authenticate: Basic realm="Jain Farms Call Reports", charset="UTF-8"');
     respondJson(401, ['error' => 'Staff sign-in required.']);
 }
