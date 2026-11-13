@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#155b40">
+  <title>Jain Farms | Call reports</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar"><div class="brand"><div class="brand-mark" aria-hidden="true">☎</div><h1>Jain Farms Call Reports</h1></div><p>Answered and missed calls · Asia/Kolkata</p></header>
+  <main class="wrap">
+    <section class="toolbar" aria-label="Call type filter"><div class="tabs" role="group" aria-label="Show calls"><button class="tab" data-status="ALL" aria-pressed="true">All calls</button><button class="tab" data-status="ANSWERED" aria-pressed="false">Answered</button><button class="tab" data-status="MISSED" aria-pressed="false">Missed</button></div><span class="spacer"></span><button id="refresh" class="button primary" type="button"><span aria-hidden="true">↻</span> Refresh</button></section>
+    <form id="filters" class="filters">
+      <div class="field"><label for="from">From date</label><input id="from" name="from" type="date"></div>
+      <div class="field"><label for="to">To date</label><input id="to" name="to" type="date"></div>
+      <div class="field search"><label for="search">Search caller, number, or agent</label><input id="search" name="search" type="search" maxlength="100" placeholder="Type to search"></div>
+      <button class="button primary apply" type="submit">Apply filters</button>
+    </form>
+    <div id="alert" class="alert" role="alert"></div>
+    <section class="summary" aria-label="Call totals">
+      <article class="card"><div class="card-label">Calls</div><div id="total" class="card-value">—</div></article>
+      <article class="card"><div class="card-label">Answered</div><div id="answered" class="card-value">—</div></article>
+      <article class="card"><div class="card-label">Missed</div><div id="missed" class="card-value">—</div></article>
+      <article class="card"><div class="card-label">Answer rate</div><div id="rate" class="card-value">—</div></article>
+    </section>
+    <section class="table-card" aria-labelledby="activity-title"><div class="table-head"><h2 id="activity-title">Call activity</h2><span id="row-hint" class="hint" aria-live="polite">Loading calls…</span></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Time (IST)</th><th>Status</th><th>Caller</th><th>Number</th><th>Agent</th><th>Duration</th><th>Recording</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden><strong>No calls found</strong>Change the dates or search term and try again.</div></div><div id="truncated" class="footer-note" hidden>Showing the latest 1,000 matching calls. Narrow the date range to see fewer records.</div></section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>
