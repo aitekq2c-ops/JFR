@@ -1,6 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
     const form = $('#filters');
     let status = 'ALL';
+    let reportPassword = '';
     const dateInKolkata = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
     const today = dateInKolkata.format(new Date());
     $('#from').value = today; $('#to').value = today;
@@ -21,8 +22,30 @@ const $ = (selector) => document.querySelector(selector);
       const query = new URLSearchParams({ from: $('#from').value, to: $('#to').value, search: $('#search').value.trim(), status });
       const button = $('#refresh'); button.disabled = true; document.body.classList.add('loading'); $('#alert').classList.remove('visible'); $('#row-hint').textContent = 'Loading calls…';
       try {
-        const response = await fetch('/api/calls?' + query.toString(), { headers: { Accept: 'application/json' }, cache: 'no-store' });
-        const body = await response.json();
+        let response;
+        let body;
+        let authAttempts = 0;
+        while (true) {
+          const headers = { Accept: 'application/json' };
+          if (reportPassword) {
+            const authBytes = new TextEncoder().encode('reports:' + reportPassword);
+            const authBinary = Array.from(authBytes, byte => String.fromCharCode(byte)).join('');
+            headers.Authorization = 'Basic ' + btoa(authBinary);
+          }
+          response = await fetch('/api/calls.php?' + query.toString(), { headers, cache: 'no-store' });
+          const responseText = await response.text();
+          try {
+            body = JSON.parse(responseText);
+          } catch {
+            throw new Error('Reports API returned HTTP ' + response.status + ' without JSON. Deploy the Hostinger API proxy at /api/calls.php.');
+          }
+          if (response.status !== 401) break;
+          if (authAttempts >= 2) throw new Error('Staff password was not accepted.');
+          const enteredPassword = window.prompt('Enter the staff password for call reports:');
+          if (!enteredPassword) throw new Error('Staff sign-in was cancelled.');
+          reportPassword = enteredPassword;
+          authAttempts += 1;
+        }
         if (!response.ok) throw new Error(body.error || 'Could not load call reports.');
         const calls = Array.isArray(body.rows) ? body.rows : [];
         $('#total').textContent = Number(body.total || 0).toLocaleString('en-IN');
