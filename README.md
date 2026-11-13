@@ -1,29 +1,24 @@
-﻿# Jain Farms Call Reports Website
+# Jain Farms Call Reports Website
 
-HTML, CSS, JavaScript, and a small PHP proxy for the Hostinger shared-hosting API. No framework or package install required.
+Static HTML, CSS, and JavaScript dashboard. Call records come directly from PostgreSQL through the n8n webhook; no PHP proxy is used.
 
 ## Files
 
 - `index.html` — dashboard structure
 - `styles.css` — responsive styling
-- `app.js` — filters, totals, and call table
-- `api/calls.php` — staff-authenticated proxy to the protected n8n webhook
-- `api/config.example.php` — template for server-only credentials
+- `app.js` — filters, staff sign-in, live refresh, totals, and call table
 
-## Local preview
+## Data flow
 
-Open `index.html` in a browser. Local preview shows the layout only; live call data requires hosting.
+`https://jfr.aitekq2c.in/` calls `https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports`. The active n8n workflow authenticates the staff request, reads PostgreSQL, and returns JSON. The dashboard refreshes every 30 seconds while open.
 
-## Data endpoint
+## Access
 
-The dashboard calls same-origin `GET /api/calls.php` with `from`, `to`, `search`, and `status` query parameters. The PHP proxy forwards those filters to the protected PostgreSQL-backed n8n endpoint and returns its JSON response.
+- Staff username: `reports`
+- Staff password: supplied privately to the resort team; entered at sign-in and kept in page memory only.
+- The n8n credential stays in n8n. Never put it in `app.js` or website source.
+- The webhook allows the `https://jfr.aitekq2c.in` origin only.
 
-## Hostinger setup
+## Deploy
 
-1. Upload this repository's files to the website's `public_html` directory, including `api/calls.php` and `api/.htaccess`.
-2. In `api/`, copy `config.example.php` to `config.local.php`. This file is ignored by Git and blocked from direct web access.
-3. Set `n8n_api_key` to the value in the n8n credential named `JFR Call Reports API Header`.
-4. Set `staff_password` to a long, unique staff password. The dashboard username is `reports`.
-5. Open `https://jfr.aitekq2c.in/`. The dashboard asks for the staff password and keeps it in memory only until the page closes.
-
-The n8n webhook is `https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports`. Never put its API key in `app.js` or commit `api/config.local.php`.
+Upload `index.html`, `styles.css`, and `app.js` to the website's static hosting root. No server-side PHP files or local config files are needed.
