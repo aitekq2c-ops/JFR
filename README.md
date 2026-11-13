@@ -4,20 +4,21 @@ Static HTML, CSS, and JavaScript dashboard. Call records come directly from Post
 
 ## Files
 
-- `index.html` — dashboard structure
+- `index.html` — staff sign-in page and dashboard structure
 - `styles.css` — responsive styling
-- `app.js` — filters, staff sign-in, live refresh, totals, and call table
+- `app.js` — sign-in, filters, live refresh, totals, and call table
 
 ## Data flow
 
-`https://jfr.aitekq2c.in/` calls `https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports`. The active n8n workflow authenticates the staff request, reads PostgreSQL, and returns JSON. The dashboard refreshes every 30 seconds while open.
+`https://jfr.aitekq2c.in/` calls `https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports`. The n8n workflow authenticates staff, reads PostgreSQL, and returns JSON. The dashboard refreshes every 30 seconds while signed in.
 
 ## Access
 
 - Staff username: `reports`
-- Staff password: supplied privately to the resort team; entered at sign-in and kept in page memory only.
-- The n8n credential stays in n8n. Never put it in `app.js` or website source.
-- The webhook allows the `https://jfr.aitekq2c.in` origin only.
+- Staff enter the reports password on the sign-in page.
+- The website keeps credentials in page memory only; it does not save them in browser storage.
+- The n8n credential stays in n8n and must never be added to website source.
+- The webhook allows the `https://jfr.aitekq2c.in` origin.
 
 ## Deploy
 

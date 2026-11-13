@@ -1,26 +1,22 @@
 const $ = (selector) => document.querySelector(selector);
 const REPORTS_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports';
-const form = $('#filters');
+const loginForm = $('#login-form');
+const filtersForm = $('#filters');
 let status = 'ALL';
+let reportUsername = '';
 let reportPassword = '';
+let authenticated = false;
 let loading = false;
 
 const dateInKolkata = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Kolkata',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
+  timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
 });
 const today = dateInKolkata.format(new Date());
 $('#from').value = today;
 $('#to').value = today;
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;'
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]));
 
 const dateTime = (input) => {
@@ -43,28 +39,34 @@ const duration = (seconds) => {
     : Math.floor(value / 60) + 'm ' + String(value % 60).padStart(2, '0') + 's';
 };
 
-function basicAuthHeader(password) {
-  const bytes = new TextEncoder().encode('reports:' + password);
+function basicAuthHeader(username, password) {
+  const bytes = new TextEncoder().encode(username + ':' + password);
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
   return 'Basic ' + btoa(binary);
 }
 
-async function loadCalls() {
-  if (location.protocol === 'file:') {
-    $('#row-hint').textContent = 'Local preview · live data needs hosting';
-    $('#empty').innerHTML = '<strong>Preview only</strong>Host this website to connect to the n8n reports webhook.';
-    $('#empty').hidden = false;
-    return;
-  }
-  if (loading) return;
+function showLoginError(message) {
+  const error = $('#login-error');
+  error.textContent = message;
+  error.hidden = !message;
+}
 
-  if (!reportPassword) {
-    const enteredPassword = window.prompt('Enter the Jain Farms call reports staff password:');
-    if (!enteredPassword) {
-      $('#row-hint').textContent = 'Staff sign-in required';
-      return;
-    }
-    reportPassword = enteredPassword;
+function returnToLogin(message) {
+  authenticated = false;
+  reportPassword = '';
+  $('#password').value = '';
+  $('#login-view').hidden = false;
+  $('#reports-view').hidden = true;
+  showLoginError(message);
+  $('#password').focus();
+}
+
+async function loadCalls(isSignIn = false) {
+  if (!reportUsername || !reportPassword || loading) return;
+
+  if (location.protocol === 'file:') {
+    showLoginError('Open the hosted reports website to sign in. Local file preview cannot connect to reports.');
+    return;
   }
 
   const query = new URLSearchParams({
@@ -73,9 +75,14 @@ async function loadCalls() {
     search: $('#search').value.trim(),
     status
   });
-  const button = $('#refresh');
+  const refreshButton = $('#refresh');
+  const signInButton = $('#sign-in');
   loading = true;
-  button.disabled = true;
+  if (refreshButton) refreshButton.disabled = true;
+  if (isSignIn) {
+    signInButton.disabled = true;
+    signInButton.textContent = 'Signing in…';
+  }
   document.body.classList.add('loading');
   $('#alert').classList.remove('visible');
   $('#row-hint').textContent = 'Loading calls…';
@@ -87,12 +94,17 @@ async function loadCalls() {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          Authorization: basicAuthHeader(reportPassword)
+          Authorization: basicAuthHeader(reportUsername, reportPassword)
         },
         cache: 'no-store'
       });
     } catch {
-      throw new Error('Could not reach n8n. Check that its webhook allows this site origin and Authorization header.');
+      throw new Error('Could not connect to reports. Check your internet connection and try again.');
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      returnToLogin('Username or password is incorrect. Please try again.');
+      return;
     }
 
     const responseText = await response.text();
@@ -100,14 +112,10 @@ async function loadCalls() {
     try {
       body = JSON.parse(responseText);
     } catch {
-      throw new Error('n8n returned HTTP ' + response.status + ' without JSON.');
+      throw new Error('The reports service returned an unexpected response. Please try again later.');
     }
 
-    if (response.status === 401) {
-      reportPassword = '';
-      throw new Error('Staff sign-in failed. Select Refresh and enter the correct password.');
-    }
-    if (!response.ok) throw new Error(body.error || 'Could not load call reports.');
+    if (!response.ok) throw new Error(body.error || 'Could not load call reports. Please try again.');
 
     const calls = Array.isArray(body.rows) ? body.rows : [];
     $('#total').textContent = Number(body.total || 0).toLocaleString('en-IN');
@@ -135,28 +143,65 @@ async function loadCalls() {
           : '—') + '</td></tr>';
     }).join('');
 
+    authenticated = true;
+    $('#login-view').hidden = true;
+    $('#reports-view').hidden = false;
+    $('#password').value = '';
+    showLoginError('');
     $('#empty').hidden = calls.length > 0;
     $('#truncated').hidden = !body.truncated;
     $('#row-hint').textContent = calls.length.toLocaleString('en-IN') +
       (calls.length === 1 ? ' call shown' : ' calls shown');
   } catch (error) {
-    $('#rows').innerHTML = '';
-    $('#empty').hidden = true;
-    $('#row-hint').textContent = 'Unable to load calls';
-    $('#alert').textContent = error instanceof Error ? error.message : 'Could not load call reports.';
-    $('#alert').classList.add('visible');
+    const message = error instanceof Error ? error.message : 'Could not load call reports.';
+    if (!authenticated) {
+      showLoginError(message);
+      $('#row-hint').textContent = 'Sign in to load calls';
+    } else {
+      $('#rows').innerHTML = '';
+      $('#empty').hidden = true;
+      $('#row-hint').textContent = 'Unable to load calls';
+      $('#alert').textContent = message;
+      $('#alert').classList.add('visible');
+    }
   } finally {
     loading = false;
-    button.disabled = false;
+    if (refreshButton) refreshButton.disabled = false;
+    signInButton.disabled = false;
+    signInButton.textContent = 'Sign in';
     document.body.classList.remove('loading');
   }
 }
 
-form.addEventListener('submit', (event) => {
+loginForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  reportUsername = $('#username').value.trim();
+  reportPassword = $('#password').value;
+  showLoginError('');
+  loadCalls(true);
+});
+
+$('#password-toggle').addEventListener('click', () => {
+  const password = $('#password');
+  const visible = password.type === 'password';
+  password.type = visible ? 'text' : 'password';
+  $('#password-toggle').textContent = visible ? 'Hide' : 'Show';
+  $('#password-toggle').setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+  $('#password-toggle').setAttribute('aria-pressed', String(visible));
+  password.focus();
+});
+
+filtersForm.addEventListener('submit', (event) => {
   event.preventDefault();
   loadCalls();
 });
-$('#refresh').addEventListener('click', loadCalls);
+$('#refresh').addEventListener('click', () => loadCalls());
+$('#sign-out').addEventListener('click', () => {
+  reportUsername = '';
+  returnToLogin('');
+  $('#row-hint').textContent = 'Sign in to load calls';
+});
+
 document.querySelectorAll('.tab').forEach((button) => button.addEventListener('click', () => {
   status = button.dataset.status;
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -165,7 +210,6 @@ document.querySelectorAll('.tab').forEach((button) => button.addEventListener('c
   loadCalls();
 }));
 
-loadCalls();
 window.setInterval(() => {
-  if (reportPassword) loadCalls();
+  if (authenticated && reportPassword) loadCalls();
 }, 30000);
