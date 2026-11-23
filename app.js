@@ -3,6 +3,7 @@ const AUTH_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report
 const BOOTSTRAP_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report-bootstrap';
 const INIT_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report-init';
 const REPORTS_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports';
+const SESSION_STORAGE_KEY = 'jfr-call-reports-session';
 
 let sessionToken = '';
 let currentUser = null;
@@ -23,6 +24,19 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => 
 function setMessage(element, message) {
   element.textContent = message || '';
   element.hidden = !message;
+}
+
+function storeSessionToken(token) {
+  sessionToken = String(token || '');
+  try {
+    if (sessionToken) sessionStorage.setItem(SESSION_STORAGE_KEY, sessionToken);
+    else sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch { /* Keep the in-memory session if browser storage is unavailable. */ }
+}
+
+function savedSessionToken() {
+  try { return sessionStorage.getItem(SESSION_STORAGE_KEY) || ''; }
+  catch { return ''; }
 }
 
 function authHeaders(token = sessionToken) {
@@ -84,7 +98,7 @@ function showAuthenticatedPage(page, pushHistory = true) {
 }
 
 function showLogin() {
-  sessionToken = '';
+  storeSessionToken('');
   currentUser = null;
   $('#auth-view').hidden = false;
   $('#reports-view').hidden = true;
@@ -159,7 +173,7 @@ $('#login-form').addEventListener('submit', async (event) => {
     const result = await postAuth('login', {
       email: $('#login-email').value.trim(), password: $('#login-password').value
     }, '');
-    sessionToken = result.token;
+    storeSessionToken(result.token);
     $('#login-password').value = '';
     showAuthenticatedView(result.user);
   } catch (error) {
@@ -187,7 +201,7 @@ $('#bootstrap-form').addEventListener('submit', async (event) => {
       })
     });
     const result = await readJson(response);
-    sessionToken = result.token;
+    storeSessionToken(result.token);
     $('#bootstrap-form').reset();
     showAuthenticatedView(result.user);
   } catch (error) {
@@ -384,10 +398,32 @@ $('#reset-password-form').addEventListener('submit', async (event) => {
 $('#cancel-edit').addEventListener('click', () => { $('#edit-user-form').hidden = true; });
 $('#cancel-reset').addEventListener('click', () => { $('#reset-password-form').hidden = true; });
 
+async function restoreSession() {
+  const token = savedSessionToken();
+  if (!token) {
+    await checkBootstrap();
+    return;
+  }
+
+  sessionToken = token;
+  try {
+    const result = await postAuth('me', {}, token);
+    if (!result.user) throw new Error('The saved sign-in could not be verified.');
+    showAuthenticatedView(result.user);
+  } catch (error) {
+    if (/session expired|sign in again|request failed \(401\)/i.test(error.message)) {
+      showLogin();
+      setMessage($('#login-error'), 'Your session expired. Sign in again.');
+      return;
+    }
+    setMessage($('#login-error'), 'Could not verify saved sign-in. Refresh to retry.');
+  }
+}
+
 if (location.protocol === 'file:') {
   $('#signin-panel').hidden = false;
   setMessage($('#login-error'), 'Open the hosted reports website to connect securely.');
 } else {
-  checkBootstrap();
+  restoreSession();
 }
 window.setInterval(() => { if (sessionToken && !document.hidden && !$('#reports-view').hidden) loadCalls(); }, 30000);
