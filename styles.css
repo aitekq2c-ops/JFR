@@ -101,7 +101,9 @@ tbody tr:hover { background: #f9fbf9; }
 .empty strong { display: block; margin-bottom: 5px; color: #30473a; font-size: 13px; }
 .alert { margin: 12px 14px; padding: 10px 12px; border-radius: 8px; font-size: 12px; }
 .footer-note { padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
-.users-card { margin-top: 16px; }
+.users-card { margin-top: 0; }
+.users-page { max-width: 1260px; margin: 26px auto 55px; padding: 0 22px; }
+.users-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .users-heading { align-items: flex-start; }
 .section-copy { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 .users-grid { display: grid; grid-template-columns: minmax(245px, .7fr) minmax(0, 1.8fr); gap: 0; }
@@ -145,6 +147,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .auth-icon { margin-bottom: 19px; }
   .auth-card h2 { font-size: 25px; }
   .wrap { margin-top: 14px; padding: 0 11px; }
+  .users-page { margin-top: 14px; padding: 0 11px; }
   .toolbar { flex-wrap: wrap; gap: 8px; padding: 9px; }
   .toolbar-spacer { display: none; }
   .account-chip { order: 2; flex: 1 1 100%; max-width: none; padding: 2px 5px; }
@@ -156,6 +159,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .stat { min-height: 76px; padding: 11px 13px; }
   .stat strong { font-size: 23px; }
   .section-head { padding: 15px; }
+  .users-heading { align-items: flex-start; }
+  .users-page-actions { flex-direction: column; align-items: stretch; }
   .hint { max-width: 120px; text-align: right; }
   .edit-fields { grid-template-columns: 1fr; }
   .edit-user-form, .reset-form { margin: 0 10px 12px; padding: 13px; }

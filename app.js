@@ -63,12 +63,24 @@ function setBusy(button, busy, busyText) {
 function showAuthenticatedView(user) {
   currentUser = user;
   $('#auth-view').hidden = true;
-  $('#reports-view').hidden = false;
   $('#account-chip').textContent = user.name + ' · ' + user.role.replace('_', ' ');
   $('#manage-users').hidden = !['admin', 'super_admin'].includes(user.role);
   $('#new-role').innerHTML = (user.role === 'super_admin' ? ['user', 'admin', 'super_admin'] : ['user', 'admin'])
     .map((role) => '<option value="' + role + '">' + role.replace('_', ' ') + '</option>').join('');
-  loadCalls();
+  showAuthenticatedPage(location.hash === '#users' ? 'users' : 'reports', false);
+}
+
+function showAuthenticatedPage(page, pushHistory = true) {
+  const canManageUsers = currentUser && ['admin', 'super_admin'].includes(currentUser.role);
+  const selectedPage = page === 'users' && canManageUsers ? 'users' : 'reports';
+  $('#reports-view').hidden = selectedPage !== 'reports';
+  $('#users-view').hidden = selectedPage !== 'users';
+  if (pushHistory) {
+    const nextUrl = location.pathname + location.search + (selectedPage === 'users' ? '#users' : '');
+    history.pushState({ page: selectedPage }, '', nextUrl);
+  }
+  if (selectedPage === 'users') loadUsers();
+  else loadCalls();
 }
 
 function showLogin() {
@@ -77,6 +89,7 @@ function showLogin() {
   $('#auth-view').hidden = false;
   $('#reports-view').hidden = true;
   $('#users-view').hidden = true;
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   $('#login-password').value = '';
   $('#bootstrap-password').value = '';
   $('#bootstrap-new-password').value = '';
@@ -88,10 +101,10 @@ async function checkBootstrap() {
     $('#bootstrap-panel').hidden = !result.needsBootstrap;
     $('#signin-panel').hidden = !!result.needsBootstrap;
     if (result.needsBootstrap) {
-      $('#bootstrap-setup-status').textContent = 'The access database is ready. Create the first super admin below.';
-      $('#initialize-access').textContent = 'Access database ready';
-      $('#initialize-access').disabled = true;
-      $('#bootstrap-submit').disabled = false;
+      $('#bootstrap-setup-status').textContent = 'Apply the account setup update before creating the first or recovery super admin.';
+      $('#initialize-access').textContent = 'Apply access setup update';
+      $('#initialize-access').disabled = false;
+      $('#bootstrap-submit').disabled = true;
       setMessage($('#bootstrap-error'), '');
     }
   } catch (error) {
@@ -265,14 +278,20 @@ $('#sign-out').addEventListener('click', async () => {
   showLogin();
   setMessage($('#login-error'), 'You have signed out.');
 });
+$('#users-sign-out').addEventListener('click', async () => {
+  try { await postAuth('logout'); } catch { /* Clear the local session even if logout cannot reach n8n. */ }
+  showLogin();
+  setMessage($('#login-error'), 'You have signed out.');
+});
 
 function openUsers() {
-  $('#users-view').hidden = false;
-  $('#users-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  loadUsers();
+  showAuthenticatedPage('users');
 }
 $('#manage-users').addEventListener('click', openUsers);
-$('#close-users').addEventListener('click', () => { $('#users-view').hidden = true; });
+$('#close-users').addEventListener('click', () => showAuthenticatedPage('reports'));
+window.addEventListener('popstate', () => {
+  if (sessionToken) showAuthenticatedPage(location.hash === '#users' ? 'users' : 'reports', false);
+});
 
 async function loadUsers() {
   setMessage($('#users-alert'), '');
@@ -330,6 +349,7 @@ $('#create-user-form').addEventListener('submit', async (event) => {
   } catch (error) { setMessage($('#create-user-error'), error.message || 'Could not create account.'); }
   finally { setBusy(button, false); }
 });
+$('#create-user-form').addEventListener('input', () => setMessage($('#create-user-error'), ''));
 
 $('#edit-user-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -370,4 +390,4 @@ if (location.protocol === 'file:') {
 } else {
   checkBootstrap();
 }
-window.setInterval(() => { if (sessionToken && !document.hidden) loadCalls(); }, 30000);
+window.setInterval(() => { if (sessionToken && !document.hidden && !$('#reports-view').hidden) loadCalls(); }, 30000);
