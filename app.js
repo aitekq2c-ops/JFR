@@ -1,8 +1,8 @@
 const $ = (selector) => document.querySelector(selector);
-const AUTH_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/c4cf5821-bd91-43cd-a81f-991a8da828cc/jfr-call-report-auth';
-const BOOTSTRAP_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/f77da606-21b7-4825-9738-8973b491988e/jfr-call-report-bootstrap';
-const INIT_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/84fb43d3-c711-412a-a3a1-bbb8cd1c7d60/jfr-call-report-init';
-const REPORTS_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/d027b2b5-d191-451a-a49b-a39cf371c4c5/jfr-call-reports';
+const AUTH_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report-auth';
+const BOOTSTRAP_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report-bootstrap';
+const INIT_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-report-init';
+const REPORTS_API_URL = 'https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports';
 
 let sessionToken = '';
 let currentUser = null;
@@ -87,9 +87,18 @@ async function checkBootstrap() {
     const result = await postAuth('bootstrap_status', {}, '');
     $('#bootstrap-panel').hidden = !result.needsBootstrap;
     $('#signin-panel').hidden = !!result.needsBootstrap;
+    if (result.needsBootstrap) {
+      $('#bootstrap-setup-status').textContent = 'The access database is ready. Create the first super admin below.';
+      $('#initialize-access').textContent = 'Access database ready';
+      $('#initialize-access').disabled = true;
+      $('#bootstrap-submit').disabled = false;
+      setMessage($('#bootstrap-error'), '');
+    }
   } catch (error) {
     $('#bootstrap-panel').hidden = false;
     $('#signin-panel').hidden = true;
+    $('#initialize-access').disabled = false;
+    $('#bootstrap-submit').disabled = true;
     $('#bootstrap-setup-status').textContent = 'Access setup is not initialized yet. Use the existing reports sign-in below to prepare the PostgreSQL access tables.';
     setMessage($('#bootstrap-error'), /unexpected response/i.test(error.message)
       ? 'First-time access setup is required. Enter the existing reports sign-in and prepare the database below.'
@@ -116,6 +125,7 @@ $('#initialize-access').addEventListener('click', async () => {
     await readJson(response);
     $('#bootstrap-setup-status').textContent = 'PostgreSQL access tables are ready. Create the first super admin below.';
     initialized = true;
+    $('#bootstrap-submit').disabled = false;
     setMessage($('#bootstrap-error'), '');
   } catch (error) {
     setMessage($('#bootstrap-error'), error.message || 'Could not initialize the access tables.');

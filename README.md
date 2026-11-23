@@ -13,10 +13,10 @@ Private static staff dashboard for answered and missed call activity. The site u
 
 The active workflow is `N3XSeb4IsTEX6fnI`. The static site calls these HTTPS webhooks:
 
-- `POST /webhook/c4cf5821-bd91-43cd-a81f-991a8da828cc/jfr-call-report-auth` — sign-in, session status/logout, and protected account actions.
-- `GET /webhook/d027b2b5-d191-451a-a49b-a39cf371c4c5/jfr-call-reports` — returns calls only for a valid bearer session.
-- `POST /webhook/84fb43d3-c711-412a-a3a1-bbb8cd1c7d60/jfr-call-report-init` — initializes the access schema; protected by the existing `JFR Call Reports Staff Login` Basic Auth credential.
-- `POST /webhook/f77da606-21b7-4825-9738-8973b491988e/jfr-call-report-bootstrap` — creates the first super admin once; protected by the same Basic Auth credential.
+- `POST /webhook/jfr-call-report-auth` — sign-in, session status/logout, and protected account actions.
+- `GET /webhook/jfr-call-reports` — returns calls only for a valid bearer session.
+- `POST /webhook/jfr-call-report-init` — initializes the access schema; protected by the existing `JFR Call Reports Staff Login` Basic Auth credential.
+- `POST /webhook/jfr-call-report-bootstrap` — creates the first super admin once; protected by the same Basic Auth credential.
 
 n8n uses the `Postgres account 2` credential. It must remain in n8n. The API allows the origin `https://jfr.aitekq2c.in` and returns JSON with CORS headers.
 
