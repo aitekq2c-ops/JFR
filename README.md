@@ -1,25 +1,48 @@
-# Jain Farms Call Reports Website
+# Jain Farms Call Reports
 
-Static HTML, CSS, and JavaScript dashboard. Call records come directly from PostgreSQL through the n8n webhook; no PHP proxy is used.
+Private static staff dashboard for answered and missed call activity. The site uses plain HTML, CSS, and JavaScript. n8n handles API requests and PostgreSQL stores call records, staff accounts, and hashed sessions. No PHP or n8n secret is shipped to the browser.
 
-## Files
+## Site files
 
-- `index.html` — staff sign-in page and dashboard structure
-- `styles.css` — responsive styling
-- `app.js` — sign-in, filters, live refresh, totals, and call table
+- `index.html` — sign-in, first-admin setup, call dashboard, and user-management interface.
+- `styles.css` — responsive Jain Farms styling.
+- `app.js` — session login, report filters, and role-aware user management.
+- `migrations/001_report_access.sql` — idempotent PostgreSQL schema and account API functions.
 
-## Data flow
+## n8n API
 
-`https://jfr.aitekq2c.in/` calls `https://n8n.srv1864214.hstgr.cloud/webhook/jfr-call-reports`. The n8n workflow authenticates staff, reads PostgreSQL, and returns JSON. The dashboard refreshes every 30 seconds while signed in.
+The active workflow is `N3XSeb4IsTEX6fnI`. The static site calls these HTTPS webhooks:
 
-## Access
+- `POST /webhook/c4cf5821-bd91-43cd-a81f-991a8da828cc/jfr-call-report-auth` — sign-in, session status/logout, and protected account actions.
+- `GET /webhook/d027b2b5-d191-451a-a49b-a39cf371c4c5/jfr-call-reports` — returns calls only for a valid bearer session.
+- `POST /webhook/84fb43d3-c711-412a-a3a1-bbb8cd1c7d60/jfr-call-report-init` — initializes the access schema; protected by the existing `JFR Call Reports Staff Login` Basic Auth credential.
+- `POST /webhook/f77da606-21b7-4825-9738-8973b491988e/jfr-call-report-bootstrap` — creates the first super admin once; protected by the same Basic Auth credential.
 
-- Staff username: `reports`
-- Staff enter the reports password on the sign-in page.
-- The website keeps credentials in page memory only; it does not save them in browser storage.
-- The n8n credential stays in n8n and must never be added to website source.
-- The webhook allows the `https://jfr.aitekq2c.in` origin.
+n8n uses the `Postgres account 2` credential. It must remain in n8n. The API allows the origin `https://jfr.aitekq2c.in` and returns JSON with CORS headers.
+
+## First-time setup
+
+1. Deploy the static site files to `https://jfr.aitekq2c.in/`.
+2. Open the site. If the PostgreSQL access tables are missing, the setup panel appears.
+3. Enter the existing reports Basic Auth username and password (the username has been `reports`) and select **Prepare access database**. The protected init webhook applies `migrations/001_report_access.sql` through n8n.
+4. Enter the new super-admin name, email, and password (12–72 characters), then select **Set up super admin**.
+5. Sign in with that email and password. Create further staff from **Manage users**.
+
+The setup is one-time: bootstrap is rejected once any account exists. If the current Basic Auth password has changed, use the current credential configured for `JFR Call Reports Staff Login`.
+
+## Roles and security
+
+- `super_admin` can manage all roles and accounts.
+- `admin` can create and manage `admin` and `user` accounts, but cannot access or assign the `super_admin` role.
+- `user` can view call reports only.
+- Passwords are hashed in PostgreSQL using `pgcrypto` bcrypt; plaintext passwords and hashes are never returned.
+- Session tokens are random, expire after eight hours, and only their SHA-256 hashes are stored in PostgreSQL. The browser keeps the current token in memory only; reloading the page requires signing in again.
+- Password reset and account deactivation revoke the affected account's sessions. At least one active super admin is preserved.
 
 ## Deploy
 
-Upload `index.html`, `styles.css`, and `app.js` to the website's static hosting root. No server-side PHP files or local config files are needed.
+Publish `index.html`, `styles.css`, and `app.js` together to the static hosting root. Keep the cache-busting versions on the CSS and JavaScript references in `index.html` in sync when publishing edits. Do not add credentials, API tokens, or database connection details to these files.
+
+## Digest schedule
+
+The live n8n report schedule is 8:00 AM and 4:00 PM in `Asia/Kolkata`.
